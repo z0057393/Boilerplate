@@ -1,4 +1,4 @@
-# Déploiement de l’infrastructure & de l’application coopink
+# Déploiement de l’infrastructure & installation des apps 
 
 ## Pré-requis
 
