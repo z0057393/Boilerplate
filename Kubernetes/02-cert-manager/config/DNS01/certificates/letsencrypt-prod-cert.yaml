@@ -1,0 +1,15 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: z0057393-prod
+  namespace: coopink
+spec:
+  secretName: letsencrypt-prod-pub
+  issuerRef:
+    name: letsencrypt-prod  # Le nom de votre ClusterIssuer
+    kind: ClusterIssuer
+  commonName: "*.z0057393.com"  # Remplacez par votre domaine wildcard
+  dnsNames:
+    - "*.z0057393.com"        # Remplacez par votre domaine wildcard
+    - "z0057393.com"          # Incluez également le domaine de base
+

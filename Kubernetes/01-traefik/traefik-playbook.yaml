@@ -1,0 +1,39 @@
+- hosts: localhost
+  gather_facts: false
+  vars:
+    traefik_namespace: traefik
+    kubeconfig_path: 
+    traefik_values: config/values.yaml
+  tasks:
+
+
+########## Create namespace ########## 
+
+  - name: Create "{{ traefik_namespace }}" namespace
+    k8s:
+     kubeconfig: "{{ kubeconfig_path }}"
+     name: "{{ traefik_namespace }}"
+     api_version: v1
+     kind: Namespace
+     state: present
+
+
+########## Add helm repository ########## 
+
+  - name: Add traefik Helm charts repository
+    kubernetes.core.helm_repository:
+      kubeconfig: "{{ kubeconfig_path }}"
+      name: traefik
+      repo_url: https://traefik.github.io/charts
+
+
+########## Install chart ########## 
+
+  - name: Install Traefik Chart with custom values
+    kubernetes.core.helm:
+      kubeconfig: "{{ kubeconfig_path }}"
+      name: traefik
+      namespace: "{{ traefik_namespace }}"
+      chart_ref: traefik/traefik
+      values_files:
+        - "{{ traefik_values }}"

@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pg-data
+data:
+  data.sql: |
+    $(cat /Users/sakolinsb/Lab/coop.ink/database/coopink-pgsql.sql)

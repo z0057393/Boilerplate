@@ -1,0 +1,45 @@
+- hosts: localhost
+  gather_facts: false
+  vars:
+    etherpad_namespace: etherpad
+    kubeconfig_path: 
+    etherpad_dir: 
+  tasks:
+
+
+########## Create namespace ########## 
+  - name: Create {{ etherpad_namespace }} namespace
+    k8s:
+     kubeconfig: "{{ kubeconfig_path }}"
+     name: "{{ etherpad_namespace }}"
+     api_version: v1
+     kind: Namespace
+     state: present
+
+  - name: Apply bdd
+    kubernetes.core.k8s:
+      kubeconfig: "{{ kubeconfig_path }}"
+      namespace: "{{ etherpad_namespace }}"
+      src: "{{ etherpad_dir }}/bdd/postgres-deployment.yaml"
+      state: present
+
+  - name: Apply ingress
+    kubernetes.core.k8s:
+      kubeconfig: "{{ kubeconfig_path }}"
+      namespace: "{{ etherpad_namespace }}"
+      src: "{{ etherpad_dir }}/ingress/etherpad-ingress.yaml"
+      state: present
+
+  - name: Apply services
+    kubernetes.core.k8s:
+      kubeconfig: "{{ kubeconfig_path }}"
+      namespace: "{{ etherpad_namespace }}"
+      src: "{{ etherpad_dir }}/service/etherpad-service.yaml"
+      state: present
+
+  - name: Apply deployment
+    kubernetes.core.k8s:
+      kubeconfig: "{{ kubeconfig_path }}"
+      namespace: "{{ etherpad_namespace }}"
+      src: "{{ etherpad_dir }}/deployment/etherpad-deployment.yaml"
+      state: present

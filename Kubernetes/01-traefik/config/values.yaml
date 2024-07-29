@@ -1,0 +1,15 @@
+additionalArguments:
+  - "--log.level=DEBUG"
+
+logs:
+  general:
+    level: DEBUG
+
+ports:
+  websecure:
+    tls:
+      enabled: true
+
+ingressClass:
+  enabled: true
+  isDefaultClass: true

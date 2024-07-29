@@ -1,0 +1,82 @@
+- hosts: localhost
+  gather_facts: false
+  vars:
+    postgres_db: 
+    postgres_user: 
+    postgres_password: 
+    postgresql_pod_name: 
+    postgres_namespace: 
+    kubeconfig_path: 
+    postgres_dir: 
+  tasks:
+
+
+########## Create namespace ########## 
+  - name: Create {{ postgres_namespace }} namespace
+    k8s:
+     kubeconfig: "{{ kubeconfig_path }}"
+     name: "{{ postgres_namespace }}"
+     api_version: v1
+     kind: Namespace
+     state: present
+
+
+########## Create pgsql secret ########## 
+  - name: Create pgsql secret
+    kubernetes.core.k8s:
+      kubeconfig: "{{ kubeconfig_path }}"
+      state: present
+      definition: 
+        apiVersion: v1
+        kind: Secret
+        type: Opaque             
+        metadata:
+          name: "pgsql-secret"
+          namespace: "{{ postgres_namespace }}"     
+        data:
+          password: "{{ postgres_password | b64encode }}"
+
+
+########## Create pgsql secret ########## 
+
+  - name: Create ConfigMap with PostgreSQL data
+    kubernetes.core.k8s:
+      kubeconfig: "{{ kubeconfig_path }}"
+      namespace: "{{ postgres_namespace }}"
+      definition:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: pg-data
+        data:
+          data.sql: 
+      state: present
+
+
+  - name: Apply PVC
+    kubernetes.core.k8s:
+      kubeconfig: "{{ kubeconfig_path }}"
+      namespace: "{{ postgres_namespace }}"
+      src: "{{ postgres_dir }}/PersistantVolumeClaim/postgres-pvc.yaml"
+      state: present
+  
+  - name: Apply PV
+    kubernetes.core.k8s:
+      kubeconfig: "{{ kubeconfig_path }}"
+      namespace: "{{ postgres_namespace }}"
+      src: "{{ postgres_dir }}/PersistantStorageVolume/postgres-pv.yaml"
+      state: present
+
+  - name: Apply services
+    kubernetes.core.k8s:
+      kubeconfig: "{{ kubeconfig_path }}"
+      namespace: "{{ postgres_namespace }}"
+      src: "{{ postgres_dir }}/service/postgres-service.yaml"
+      state: present
+
+  - name: Apply deployment
+    kubernetes.core.k8s:
+      kubeconfig: "{{ kubeconfig_path }}"
+      namespace: "{{ postgres_namespace }}"
+      src: "{{ postgres_dir }}/deployment/postgres-deploymentImport.yaml"
+      state: present

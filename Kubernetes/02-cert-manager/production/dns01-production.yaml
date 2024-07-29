@@ -1,0 +1,28 @@
+- hosts: localhost
+  gather_facts: false
+  vars:
+    cert_manager_namespace: coopink
+    kubeconfig_path: /Users/sakolinsb/Lab/terraform/Lab-Terraform/Cluster-Kubernetes/ansible/inventory/kubeconfig.yml
+  tasks:
+
+
+  - name: Apply rbac.yml
+    kubernetes.core.k8s:
+      kubeconfig: "{{ kubeconfig_path }}"
+      src: ../config/rbac/rbac-deployment.yaml
+      state: present
+
+
+  - name: Apply issuers.yml
+    kubernetes.core.k8s:
+      kubeconfig: "{{ kubeconfig_path }}"
+      src: ../config/DNS01/issuers/acme-prod.yaml
+      state: present
+
+  - name: Apply certificates.yml
+    kubernetes.core.k8s:
+      kubeconfig: "{{ kubeconfig_path }}"
+      src: ../config/DNS01/certificates/letsencrypt-prod-cert.yaml
+      state: present
+
+ 

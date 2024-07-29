@@ -1,0 +1,39 @@
+- hosts: localhost
+  gather_facts: false
+  vars:
+    postgres_namespace:
+    kubeconfig_path: 
+    postgres_dir: 
+  tasks:
+
+
+########## Create namespace ########## 
+  - name: Create {{ postgres_namespace }} namespace
+    k8s:
+     kubeconfig: "{{ kubeconfig_path }}"
+     name: "{{ postgres_namespace }}"
+     api_version: v1
+     kind: Namespace
+     state: present
+
+
+  - name: Apply ingress
+    kubernetes.core.k8s:
+      kubeconfig: "{{ kubeconfig_path }}"
+      namespace: "{{ postgres_namespace }}"
+      src: "{{ postgres_dir }}/ingress/pgadmin-ingress.yaml"
+      state: present
+
+  - name: Apply services
+    kubernetes.core.k8s:
+      kubeconfig: "{{ kubeconfig_path }}"
+      namespace: "{{ postgres_namespace }}"
+      src: "{{ postgres_dir }}/service/pgadmin-service.yaml"
+      state: present
+
+  - name: Apply deployment
+    kubernetes.core.k8s:
+      kubeconfig: "{{ kubeconfig_path }}"
+      namespace: "{{ postgres_namespace }}"
+      src: "{{ postgres_dir }}/deployment/pgadmin-deployment.yaml"
+      state: present

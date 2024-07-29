@@ -1,0 +1,20 @@
+- hosts: localhost
+  gather_facts: false
+  vars:
+    cert_manager_namespace: coopink
+    kubeconfig_path: /Users/sakolinsb/Lab/terraform/Lab-Terraform/Cluster-Kubernetes/ansible/inventory/kubeconfig.yml
+  tasks:
+
+  - name: Apply issuers.yml
+    kubernetes.core.k8s:
+      kubeconfig: "{{ kubeconfig_path }}"
+      src: ../config/issuer/acme-staging.yaml
+      state: present
+
+  - name: Apply certificates.yml
+    kubernetes.core.k8s:
+      kubeconfig: "{{ kubeconfig_path }}"
+      src: ../config/certificates/letsencrypt-staging-cert.yaml
+      state: present
+
+ 
