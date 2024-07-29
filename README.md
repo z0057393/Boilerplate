@@ -1,10 +1,3 @@
-# Production - Installation
-
-Created: 2 juillet 2024 11:25
-Type: Documentation
-Created By: BOISSEL Nicolas
-tag: ansible, terraform
-
 # Déploiement de l’infrastructure & de l’application coopink
 
 ## Pré-requis
@@ -69,12 +62,12 @@ variable "kubeconfig_path" {
 
 variable "cluster_name" {
   type        = string
-  default     = "AllAsOne"
+  default     = "plop"
 }
 
 variable "pool_name" {
   type        = string
-  default     = "coopink"
+  default     = "plop"
 }
 
 variable "region" {
@@ -185,10 +178,6 @@ Ref:
 
 - Terraform provider : [https://registry.terraform.io/browse/providers](https://registry.terraform.io/browse/providers)
 - OVH API : [https://help.ovhcloud.com/csm/fr-api-getting-started-ovhcloud-api?id=kb_article_view&sysparm_article=KB0042789](https://help.ovhcloud.com/csm/fr-api-getting-started-ovhcloud-api?id=kb_article_view&sysparm_article=KB0042789)
-- Identifiant du projet :
-
-![Untitled](Production%20-%20Installation%2019fe9bf86e3a4034945a331f28e9f53e/Untitled.png)
-
 - Augmenter les quotas : [https://help.ovhcloud.com/csm/fr-public-cloud-compute-increase-quota?id=kb_article_view&sysparm_article=KB0050857](https://help.ovhcloud.com/csm/fr-public-cloud-compute-increase-quota?id=kb_article_view&sysparm_article=KB0050857)
 - Ovh public cloud : [https://help.ovhcloud.com/csm/fr-public-cloud-compute-create-project?id=kb_article_view&sysparm_article=KB0050614](https://help.ovhcloud.com/csm/fr-public-cloud-compute-create-project?id=kb_article_view&sysparm_article=KB0050614)
 
@@ -226,23 +215,6 @@ terraform destroy -var-file="secrets/secret.tfvars"
 
 La commande terraform destroy va détruire tous les objets distants gérés par la configuration de Terraform.
 
-## Installation de nos applications
-
-### Introduction
-
-Pour le projet coopink, notre application est composé de 3 parties :
-
-- L’application ( Laravel )
-- Le websocket ( Javascript/socket.io )
-- La base de données ( postgresql )
-
-![Untitled](Production%20-%20Installation%2019fe9bf86e3a4034945a331f28e9f53e/Untitled%201.png)
-
-Un secret contenant la clef de communication entre l’application et le websocket est a créer. 
-Il nous faudra également installer un reverse proxy afin que nos requêtes soient redirigé vers le bon service.
-Et pour finir nous devrons gérer les certificats SSL afin d’assurer une communication en HTTPS.
-
-Pour automatiser le déploiement, nous allons utiliser Ansible.
 
 **Structure d’Ansible** 
 
@@ -318,14 +290,6 @@ Pour exécuter notre playbook:
 ```jsx
 ansible-playbook traefik-playbook.yaml                                                                                           ─╯
 ```
-
-Resultat de la commande : 
-
-```jsx
-kubectl get all -n traefik 
-```
-
-![Untitled](Production%20-%20Installation%2019fe9bf86e3a4034945a331f28e9f53e/Untitled%202.png)
 
 Une fois que l’IP externe est présente, ne pas oublier d’éditer sa zone DNS afin de mapper le nom de domaine et l’adresse IP 
 
@@ -491,11 +455,6 @@ On peut ensuite contrôler l’état de nos certificats via la commande ci-desso
 kubectl get certificate -n coopink 
 ```
 
-Puis contrôler si nos secret on bien était créé. 
-Nos secret contiennent la clef privée et public de nos certificats 
-
-![Untitled](Production%20-%20Installation%2019fe9bf86e3a4034945a331f28e9f53e/Untitled%203.png)
-
 Une fois que le certificats fonctionne en mode staging, nous pouvons le faire en mode production. 
 
 certificates/letsencrypt-prod-cert.yaml
@@ -537,115 +496,7 @@ spec:
 
 On modifie le playbook pour appliquer les bons fichiers puis on exécute la commande ansible. 
 
-## **Etape 3 - installation de l’application**
 
-Pour finir nous n’avons plus qu’à installer notre application.
-
-### Coopink
-
-Pour cela, on crée un nouveau playbook ansible 
-
-```jsx
-ansible 
-	 |____ inventory
-	 |____ playbook
-	           |____ traefik
-	                    |____ traefik-playbook.yaml
-	           |____ cert-manager
-	                    |____ cert-manager-playbook.yaml
-	           |____ coopink
-	                    |_____ coopink
-	                              |____ coopink-playbook.yaml
-```
-
-coopink-playbook.yaml
-
-```jsx
-- hosts: localhost
-  gather_facts: false
-  vars:
-    docker_server: { gitlab private repository
-    docker_username: { gitlab username }
-    docker_password: { gitlab API key }
-    docker_email: { gitlab email }
-    app_namespace: coopink
-    traefik_namespace: traefik
-    cert_manager_namespace: cert-manager
-    kubeconfig_path: {path to dir}/ansible/inventory/kubeconfig.yml
-    coopinkpasswordcloud: {Websocket API key }
-    repo_url: {{ url du repo }}
-  tasks:
-
-########## Create namespace ########## 
-
-  - name: Create {{ app_namespace }} namespace
-    k8s:
-     kubeconfig: "{{ kubeconfig_path }}"
-     name: "{{ app_namespace }}"
-     api_version: v1
-     kind: Namespace
-     state: present
-
-########## Add helm repository ########## 
-
-  - name: Add Coopink Helm charts repository
-    kubernetes.core.helm_repository:
-      kubeconfig: "{{ kubeconfig_path }}"
-      name: coop.ink
-      repo_url: {{ repo_url }}
-      repo_username: {{ docker_username }}
-      repo_password: {{ docker_password }}
-
-########## Create secret ########## 
-
-  - name: Encode Docker credentials in base64
-    set_fact:
-      docker_credentials_b64: "{{ (docker_username + ':' + docker_password) | b64encode }}"
-  - name: Create secret
-    kubernetes.core.k8s:
-      kubeconfig: "{{ kubeconfig_path }}"
-      state: present
-      definition:
-        apiVersion: v1
-        kind: Secret
-        type: kubernetes.io/dockerconfigjson
-        metadata:
-          name: regcred
-          namespace: "{{ app_namespace }}"
-        data:
-          .dockerconfigjson: "{{ {'auths': {docker_server: {'auth': docker_credentials_b64, 'email': docker_email}} } | to_json | b64encode }}"
-  - name: Create Websocket secret
-    kubernetes.core.k8s:
-      kubeconfig: "{{ kubeconfig_path }}"
-      state: present
-      definition: 
-        apiVersion: v1
-        kind: Secret
-        type: Opaque             
-        metadata:
-          name: "websocket-app-key"
-          namespace: "{{ app_namespace }}"     
-        data:
-          app-key: "{{ coopinkpasswordcloud | b64encode }}"
-
-########## Install chart ########## 
-  
-  - name: Install Coopink Chart
-    kubernetes.core.helm:
-      kubeconfig: "{{ kubeconfig_path }}"
-      name: coop-ink
-      namespace: "{{ app_namespace }}"
-      chart_ref: coop.ink/coop-ink
-      chart_version: 0.5
- 
-  
-```
-
-On exécute le playbook 
-
-```jsx
-ansible-playbook coopink-playbook.yaml
-```
 
 ### PostgreSQL
 
@@ -862,7 +713,6 @@ Pour améliorer l'efficacité et la simplicité de la gestion de notre base de d
 Cette interface permettra une interaction plus aisée avec la base de données, facilitant ainsi les tâches de surveillance et de maintenance. 
 Une fois installée, l'interface pgAdmin devrait être accessible via le prefix /pgadmin4.
 
-![Untitled](Production%20-%20Installation%2019fe9bf86e3a4034945a331f28e9f53e/Untitled%204.png)
 
 ### Installation pgadmin
 
@@ -962,7 +812,3 @@ ref:
 - Documentation officiel pgadmin : h[ttps://www.pgadmin.org/docs/pgadmin4/latest/container_deployment.html](https://www.pgadmin.org/docs/pgadmin4/latest/container_deployment.html)
 - Image officiel : [https://hub.docker.com/r/dpage/pgadmin4](https://hub.docker.com/r/dpage/pgadmin4)
 - Connect pgadmin to postgreSQL: [https://www.highgo.ca/2023/11/06/managing-postgresql-like-a-pro-a-kubernetes-based-pgadmin-tutorial/](https://www.highgo.ca/2023/11/06/managing-postgresql-like-a-pro-a-kubernetes-based-pgadmin-tutorial/)
-
-## Infrastructure final
-
-![Untitled](Production%20-%20Installation%2019fe9bf86e3a4034945a331f28e9f53e/Untitled%204.png)
